@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.OffsetDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -12,23 +13,53 @@ class DeliveryTest {
 
     @Test
     public void shouldChangeToPlaced() {
+        // 1. Arrange: Definimos um tempo fixo para o teste
         Delivery delivery = Delivery.draft();
+        OffsetDateTime now = OffsetDateTime.now();
 
-        delivery.editPreparationDetails(createdValidPreparationDetails());
+        // 2. Act: Passamos o tempo explicitamente para os métodos
+        delivery.editPreparationDetails(createdValidPreparationDetails(), now);
+        delivery.place(now);
 
-        delivery.place();
-
+        // 3. Assert
         assertEquals(DeliveryStatus.WAITING_FOR_COURIER, delivery.getStatus());
-        assertNotNull(delivery.getPlacedAt());
+
+        // Agora o teste é muito mais rigoroso: comparamos o valor exato
+        assertEquals(now, delivery.getPlacedAt());
+        assertEquals(now.plus(createdValidPreparationDetails().getExpectedDeliveryTime()),
+                delivery.getExpectedDeliveryAt());
+    }@Test
+    public void shouldChangeToPlaced() {
+        // 1. Arrange: Definimos um tempo fixo para o teste
+        Delivery delivery = Delivery.draft();
+        OffsetDateTime now = OffsetDateTime.now();
+
+        // 2. Act: Passamos o tempo explicitamente para os métodos
+        delivery.editPreparationDetails(createdValidPreparationDetails(), now);
+        delivery.place(now);
+
+        // 3. Assert
+        assertEquals(DeliveryStatus.WAITING_FOR_COURIER, delivery.getStatus());
+
+        // Teste mais rigoroso: comparamos o valor exato
+        assertEquals(now, delivery.getPlacedAt());
+        assertEquals(now.plus(createdValidPreparationDetails().getExpectedDeliveryTime()),
+                delivery.getExpectedDeliveryAt());
     }
 
     @Test
-    public void shouldNotPlace() {
+    public void shouldNotPlaceWhenDetailsAreMissing() {
+        // Arrange
         Delivery delivery = Delivery.draft();
+        OffsetDateTime now = OffsetDateTime.now();
+
+        // Act & Assert
+        // O teste agora passa o parâmetro 'now' para o método place
         assertThrows(DomainException.class, () -> {
-            delivery.place();
+            delivery.place(now);
         });
 
+        // Verificamos se o estado do objeto permaneceu íntegro (não foi alterado)
         assertEquals(DeliveryStatus.DRAFT, delivery.getStatus());
         assertNull(delivery.getPlacedAt());
     }
