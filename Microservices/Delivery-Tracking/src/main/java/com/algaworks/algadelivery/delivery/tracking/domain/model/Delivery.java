@@ -43,6 +43,12 @@ public class Delivery extends AbstractAggregateRoot<Delivery> {
     private Integer totalItems;
 
     @Embedded
+    private ContactPoint sender;
+
+    @Embedded
+    private ContactPoint recipient;
+
+    @Embedded
     @AttributeOverrides({
             @AttributeOverride(name = "zipCode", column = @Column(name = "sender_zip_code")),
             @AttributeOverride(name = "street", column = @Column(name = "sender_street")),
@@ -51,25 +57,25 @@ public class Delivery extends AbstractAggregateRoot<Delivery> {
             @AttributeOverride(name = "name", column = @Column(name = "sender_name")),
             @AttributeOverride(name = "phone", column = @Column(name = "sender_phone"))
     })
-    private ContactPoint sender;
+    //private ContactPoint sender;
 
-    @Embedded
-    @AttributeOverrides({
-            @AttributeOverride(name = "zipCode", column = @Column(name = "recipient_zip_code")),
-            @AttributeOverride(name = "street", column = @Column(name = "recipient_street")),
-            @AttributeOverride(name = "number", column = @Column(name = "recipient_number")),
-            @AttributeOverride(name = "complement", column = @Column(name = "recipient_complement")),
-            @AttributeOverride(name = "name", column = @Column(name = "recipient_name")),
-            @AttributeOverride(name = "phone", column = @Column(name = "recipient_phone"))
-    })
-    private ContactPoint recipient;
+//    @Embedded
+//    @AttributeOverrides({
+//            @AttributeOverride(name = "zipCode", column = @Column(name = "recipient_zip_code")),
+//            @AttributeOverride(name = "street", column = @Column(name = "recipient_street")),
+//            @AttributeOverride(name = "number", column = @Column(name = "recipient_number")),
+//            @AttributeOverride(name = "complement", column = @Column(name = "recipient_complement")),
+//            @AttributeOverride(name = "name", column = @Column(name = "recipient_name")),
+//            @AttributeOverride(name = "phone", column = @Column(name = "recipient_phone"))
+//    })
+    //private ContactPoint recipient;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, mappedBy = "delivery")
     private List<Item> items = new ArrayList<>();
 
     public static Delivery draft() {
         Delivery delivery = new Delivery();
-        delivery.setId(UUID.randomUUID());
+        delivery.id = UUID.randomUUID();
         delivery.setStatus( DeliveryStatus.DRAFT);
         delivery.setTotalItems(0);
         delivery.setTotalCost(BigDecimal.ZERO);
@@ -115,23 +121,23 @@ public class Delivery extends AbstractAggregateRoot<Delivery> {
         setTotalCost(this.getDistanceFee().add(this.getCourierPayout()));
     }
 
-    public void place() {
+    public void place(OffsetDateTime placedAt) {
         verifyIfCanBePlaced();
         this.changeStatusTo(DeliveryStatus.WAITING_FOR_COURIER);
-        this.setPlacedAt(OffsetDateTime.now());
-        super.registerEvent(new DeliveryPlacedEvent(this.getPlacedAt(), this.getId()));
+        this.placedAt = placedAt;
+        registerEvent(new DeliveryPlacedEvent(this.placedAt, this.id));
     }
 
-    public void pickUp(UUID courierId) {
+    public void pickUp(UUID courierId, OffsetDateTime assignedAt) {
         this.setCourierId(courierId);
         this.changeStatusTo(DeliveryStatus.IN_TRANSIT);
-        this.setAssignedAt(OffsetDateTime.now());
+        this.setAssignedAt(assignedAt);
         super.registerEvent(new DeliveryPickUpEvent(this.getAssignedAt(), this.getId()));
     }
 
-    public void markAsDelivered() {
+    public void markAsDelivered(OffsetDateTime fulfilledAt) {
         this.changeStatusTo(DeliveryStatus.DELIVERED);
-        this.setFulfilledAt(OffsetDateTime.now());
+        this.setFulfilledAt(fulfilledAt);
         super.registerEvent(new DeliveryFulfilledEvent(this.getFulfilledAt(), this.getId()));
     }
 
